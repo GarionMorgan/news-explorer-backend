@@ -1,10 +1,11 @@
 # Environment variables
 .env
 
-# Log files  
+# Log files
 *.log
 request.log
 error.log
+logs/
 
 # OS generated files
 .DS_Store
