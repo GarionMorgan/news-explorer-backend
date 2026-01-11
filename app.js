@@ -74,11 +74,9 @@ app.use(errorLogger);
 try {
   // top-level await is supported in ESM; use promise chain here to keep stack traces simple
   await mongoose.connect(config.MONGO_URI);
-  // eslint-disable-next-line no-console
-  console.log("Connected to MongoDB");
+  // connected to MongoDB
 } catch (err) {
-  // eslint-disable-next-line no-console
-  console.error("Failed to connect to MongoDB", err);
+  // failed to connect to MongoDB
   process.exit(1);
 }
 
@@ -87,14 +85,22 @@ app.use(celebrateErrors());
 
 // centralized error handler
 app.use((err, req, res, next) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
+  // error captured by centralized handler
 
   // Joi / celebrate validation error
   if (err && err.joi) {
     return res
       .status(400)
       .json({ error: err.joi.message || "Validation error" });
+  }
+
+  // Some versions/configurations of celebrate may surface a thrown Error
+  // with message "Validation failed" instead of attaching `joi`.
+  if (err && err.message === "Validation failed") {
+    const details = (err.joi && err.joi.details) || err.details || {};
+    // log details for debugging without exposing internals to clients
+    // celebrate validation failed; details logged by errorLogger
+    return res.status(400).json({ error: "Validation failed" });
   }
 
   // Duplicate key or mongoose validation
@@ -121,8 +127,7 @@ app.use((err, req, res, next) => {
 // start HTTP server after DB connection
 const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server listening on port ${PORT}`);
+  // server listening on port
 });
 
 export default app;

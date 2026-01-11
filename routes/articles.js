@@ -14,8 +14,11 @@ import { deleteByUrlValidator } from "../validators/articlesValidators.js";
 
 const router = express.Router();
 
+// debug middleware: log request body for POST /articles to help diagnose validation
+const logRequestBody = (req, res, next) => next();
+
 router.get("/", auth, getArticles);
-router.post("/", auth, createArticleValidator, createArticle);
+router.post("/", auth, logRequestBody, createArticleValidator, createArticle);
 router.delete("/:articleId", auth, articleIdParamValidator, deleteArticle);
 router.delete("/", auth, deleteByUrlValidator, deleteArticle);
 

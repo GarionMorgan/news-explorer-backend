@@ -61,7 +61,29 @@ export async function streamImage(req, res, next) {
     try {
       await fs.promises.access(filePath, fs.constants.R_OK);
     } catch (err) {
-      return res.status(404).json({ error: "Not found" });
+      // file not present on disk; attempt to find by filename in GridFS
+      try {
+        const db = mongoose.connection.db;
+        const bucket = new GridFSBucket(db, { bucketName: "images" });
+        // try exact filename match
+        let files = await bucket.find({ filename: safeName }).toArray();
+        // try filename without extension
+        if ((!files || files.length === 0) && path.extname(safeName)) {
+          const base = path.parse(safeName).name;
+          files = await bucket.find({ filename: base }).toArray();
+        }
+        if (!files || files.length === 0) {
+          return res.status(404).json({ error: "Not found" });
+        }
+        const file = files[0];
+        if (file.contentType) res.setHeader("Content-Type", file.contentType);
+        const downloadStream = bucket.openDownloadStream(file._id);
+        downloadStream.on("error", (err) => next(err));
+        downloadStream.pipe(res);
+        return;
+      } catch (innerErr) {
+        return next(innerErr);
+      }
     }
 
     const mime = extToMime(path.extname(safeName));
