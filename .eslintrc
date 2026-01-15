@@ -7,10 +7,23 @@
   },
   "extends": ["eslint:recommended", "airbnb-base"],
   "parserOptions": {
-    "ecmaVersion": 2018
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".json"]
+      }
+    }
   },
   "rules": {
     "no-console": "off",
-    "no-underscore-dangle": ["error", { "allow": ["_id"] }]
+    "no-underscore-dangle": ["error", { "allow": ["_id"] }],
+    "import/extensions": [
+      "error",
+      "always",
+      { "js": "always", "json": "always" }
+    ]
   }
 }

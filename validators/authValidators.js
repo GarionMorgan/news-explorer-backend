@@ -1,5 +1,5 @@
 // validators/authValidators.js
-import { celebrate, Joi, Segments } from "celebrate";
+import { celebrate, Joi, Segments } from 'celebrate';
 
 export const signupValidator = celebrate({
   [Segments.BODY]: Joi.object().keys({

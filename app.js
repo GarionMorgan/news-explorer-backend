@@ -1,17 +1,13 @@
-import express from "express";
-import path from "path";
-import fs from "fs";
-import helmet from "helmet";
-import cors from "cors";
-import authRoutes from "./routes/auth.js";
-import usersRoutes from "./routes/users.js";
-import articlesRoutes from "./routes/articles.js";
-import uploadsRoutes from "./routes/uploads.js";
-import { requestLogger, errorLogger } from "./utils/logger.js";
-import { errors as celebrateErrors } from "celebrate";
-import parseMongoError from "./utils/parseMongoError.js";
-import mongoose from "mongoose";
-import config from "./config/index.js";
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import { errors as celebrateErrors } from 'celebrate';
+import mongoose from 'mongoose';
+import { requestLogger, errorLogger } from './utils/logger.js';
+import errorHandler from './middlewares/errorHandler.js';
+import rateLimiter from './middlewares/rateLimiter.js';
+import config from './config/index.js';
+import routes from './routes/index.js';
 
 const app = express();
 
@@ -20,52 +16,23 @@ const app = express();
 // Cross-Origin-Embedder-Policy to avoid requiring COEP on the document.
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     crossOriginEmbedderPolicy: false,
-  })
+  }),
 );
 app.use(cors());
 app.use(express.json());
 
-// mount uploads streaming route (GridFS-backed) with per-request CORP/CORS
-app.use(
-  "/uploads",
-  (req, res, next) => {
-    const origin = req.get("origin");
-    const host = req.get("host");
-    try {
-      if (origin) {
-        const originHost = new URL(origin).host;
-        if (originHost === host) {
-          // same host (including port) — restrict to same-site
-          res.setHeader("Cross-Origin-Resource-Policy", "same-site");
-          res.setHeader("Access-Control-Allow-Origin", origin);
-        } else {
-          // different origin — allow embedding from this origin only
-          res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-          res.setHeader("Access-Control-Allow-Origin", origin);
-        }
-      } else {
-        // no origin header (direct request) — be permissive for images
-        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-        res.setHeader("Access-Control-Allow-Origin", "*");
-      }
-    } catch (err) {
-      // fallback to permissive if parsing fails
-      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-    }
-    next();
-  },
-  uploadsRoutes
-);
+// uploads route middleware moved into `routes/uploads.js`
 
 // request logging (JSON)
 app.use(requestLogger);
 
-app.use("/auth", authRoutes);
-app.use("/users", usersRoutes);
-app.use("/articles", articlesRoutes);
+// rate limiter (global)
+app.use(rateLimiter);
+
+// single main routes aggregator
+app.use('/', routes);
 
 // error logging (JSON)
 app.use(errorLogger);
@@ -83,46 +50,8 @@ try {
 // celebrate validation errors -> let centralized handler handle them
 app.use(celebrateErrors());
 
-// centralized error handler
-app.use((err, req, res, next) => {
-  // error captured by centralized handler
-
-  // Joi / celebrate validation error
-  if (err && err.joi) {
-    return res
-      .status(400)
-      .json({ error: err.joi.message || "Validation error" });
-  }
-
-  // Some versions/configurations of celebrate may surface a thrown Error
-  // with message "Validation failed" instead of attaching `joi`.
-  if (err && err.message === "Validation failed") {
-    const details = (err.joi && err.joi.details) || err.details || {};
-    // log details for debugging without exposing internals to clients
-    // celebrate validation failed; details logged by errorLogger
-    return res.status(400).json({ error: "Validation failed" });
-  }
-
-  // Duplicate key or mongoose validation
-  const parsed = parseMongoError(err);
-  if (parsed) return res.status(parsed.status).json({ error: parsed.message });
-
-  // JWT errors
-  if (
-    err &&
-    (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError")
-  ) {
-    return res.status(401).json({ error: "Invalid or expired token" });
-  }
-
-  // Mongoose bad ObjectId (CastError)
-  if (err && err.name === "CastError") {
-    return res.status(400).json({ error: "Invalid identifier" });
-  }
-
-  // fallback
-  return res.status(500).json({ error: "Internal Server Error" });
-});
+// centralized error handler (extracted to middleware)
+app.use(errorHandler);
 
 // start HTTP server after DB connection
 const PORT = process.env.PORT || 3002;
