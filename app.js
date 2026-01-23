@@ -18,7 +18,7 @@ app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     crossOriginEmbedderPolicy: false,
-  }),
+  })
 );
 app.use(cors());
 app.use(express.json());
@@ -38,13 +38,22 @@ app.use('/', routes);
 app.use(errorLogger);
 
 // connect to MongoDB (app handles DB connection)
-try {
-  // top-level await is supported in ESM; use promise chain here to keep stack traces simple
-  await mongoose.connect(config.MONGO_URI);
-  // connected to MongoDB
-} catch (err) {
-  // failed to connect to MongoDB
-  process.exit(1);
+if (process.env.SKIP_DB !== 'true') {
+  try {
+    // top-level await is supported in ESM; use promise chain here to keep stack traces simple
+    await mongoose.connect(config.MONGO_URI);
+    // connected to MongoDB
+  } catch (err) {
+    // failed to connect to MongoDB
+    process.exit(1);
+  }
+} else {
+  // Allow running the server without a DB connection for local verification.
+  // Set SKIP_DB=true in the environment to enable this mode.
+  // Be cautious: routes that rely on DB will still fail when exercised.
+  // This is intended only for lightweight validation (startup + middleware checks).
+  // eslint-disable-next-line no-console
+  console.log('SKIP_DB=true - skipping MongoDB connection');
 }
 
 // celebrate validation errors -> let centralized handler handle them

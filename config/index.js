@@ -8,8 +8,11 @@ if (NODE_ENV !== 'production') {
 
 const devConfig = {
   MONGO_URI:
-    process.env.DEV_MONGO_URI || 'mongodb://localhost:27017/news-explorer',
-  JWT_SECRET: process.env.DEV_JWT_SECRET || 'secret-key',
+    process.env.DEV_MONGO_URI ||
+    process.env.MONGODB_URI ||
+    'mongodb://localhost:27017/news-explorer',
+  JWT_SECRET:
+    process.env.DEV_JWT_SECRET || process.env.JWT_SECRET || 'secret-key',
   RATE_LIMIT_WINDOW_MS:
     parseInt(process.env.DEV_RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
   RATE_LIMIT_MAX: parseInt(process.env.DEV_RATE_LIMIT_MAX, 10) || 100,

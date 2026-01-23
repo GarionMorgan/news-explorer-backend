@@ -1,37 +1,22 @@
 // routes/auth.js
 
 import express from 'express';
-import {
-  signup, signin, signout, me,
-} from '../controllers/authController.js';
+import { signup, signin, signout, me } from '../controllers/authController.js';
 import {
   signupValidator,
   signinValidator,
 } from '../validators/authValidators.js';
 import auth from '../middlewares/auth.js';
 import {
-  authHeaderValidator,
-  contentTypeValidator,
-  acceptJsonValidator,
+  headersValidator,
+  headersAuthValidator,
 } from '../validators/commonValidators.js';
 
 const router = express.Router();
 
-router.post(
-  '/signup',
-  contentTypeValidator,
-  acceptJsonValidator,
-  signupValidator,
-  signup,
-);
-router.post(
-  '/signin',
-  contentTypeValidator,
-  acceptJsonValidator,
-  signinValidator,
-  signin,
-);
+router.post('/signup', headersValidator, signupValidator, signup);
+router.post('/signin', headersValidator, signinValidator, signin);
 router.post('/signout', signout);
-router.get('/me', acceptJsonValidator, authHeaderValidator, auth, me);
+router.get('/me', headersAuthValidator, auth, me);
 
 export default router;

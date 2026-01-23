@@ -16,9 +16,7 @@ const JWT_EXPIRES_IN = '7d';
 
 export async function signup(req, res, next) {
   try {
-    const {
-      name, email, password, role,
-    } = req.body;
+    const { name, email, password, role } = req.body;
     const user = await User.create({
       name,
       email,
@@ -37,10 +35,12 @@ export async function signin(req, res, next) {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email }).select('+password');
-    if (!user) return next(new UnauthorizedError(MESSAGES.INVALID_EMAIL_OR_PASSWORD));
+    if (!user)
+      return next(new UnauthorizedError(MESSAGES.INVALID_EMAIL_OR_PASSWORD));
 
     const passwordMatches = await user.comparePassword(password);
-    if (!passwordMatches) return next(new UnauthorizedError(MESSAGES.INVALID_EMAIL_OR_PASSWORD));
+    if (!passwordMatches)
+      return next(new UnauthorizedError(MESSAGES.INVALID_EMAIL_OR_PASSWORD));
 
     const payload = {
       _id: user._id.toString(),
@@ -59,7 +59,12 @@ export async function signout(req, res, next) {
   try {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return next(new UnauthorizedError(MESSAGES.AUTHORIZATION_REQUIRED));
+    // If no token was provided, treat as already signed out (idempotent).
+    // This avoids forcing clients to keep a token when logging out and
+    // prevents a 401 during logout flows where the client cleared the token.
+    if (!token) {
+      return res.json({ message: MESSAGES.SIGNED_OUT });
+    }
 
     const decoded = jwt.decode(token);
     const exp = decoded && decoded.exp ? new Date(decoded.exp * 1000) : null;
@@ -68,6 +73,7 @@ export async function signout(req, res, next) {
       token,
       expiresAt: exp || new Date(Date.now() + 7 * 24 * 3600 * 1000),
     });
+
     return res.json({ message: MESSAGES.SIGNED_OUT });
   } catch (err) {
     return next(err);
@@ -77,7 +83,8 @@ export async function signout(req, res, next) {
 export async function me(req, res, next) {
   try {
     const userId = req.user && req.user._id;
-    if (!userId) return next(new UnauthorizedError(MESSAGES.AUTHORIZATION_REQUIRED));
+    if (!userId)
+      return next(new UnauthorizedError(MESSAGES.AUTHORIZATION_REQUIRED));
 
     const user = await User.findById(userId);
     if (!user) return next(new NotFoundError(MESSAGES.USER_NOT_FOUND));

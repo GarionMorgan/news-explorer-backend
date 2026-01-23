@@ -1,11 +1,7 @@
 // routes/articles.js
 import express from 'express';
 import auth from '../middlewares/auth.js';
-import {
-  authHeaderValidator,
-  contentTypeValidator,
-  acceptJsonValidator,
-} from '../validators/commonValidators.js';
+import { headersValidator } from '../validators/commonValidators.js';
 import {
   getArticles,
   createArticle,
@@ -22,33 +18,22 @@ const router = express.Router();
 // debug middleware: log request body for POST /articles to help diagnose validation
 const logRequestBody = (req, res, next) => next();
 
-router.get('/', acceptJsonValidator, authHeaderValidator, auth, getArticles);
+router.get('/', headersValidator, auth, getArticles);
 router.post(
   '/',
-  contentTypeValidator,
-  acceptJsonValidator,
-  authHeaderValidator,
+  headersValidator,
   auth,
   logRequestBody,
   createArticleValidator,
-  createArticle,
+  createArticle
 );
 router.delete(
   '/:articleId',
-  acceptJsonValidator,
-  authHeaderValidator,
+  headersValidator,
   auth,
   articleIdParamValidator,
-  deleteArticle,
+  deleteArticle
 );
-router.delete(
-  '/',
-  contentTypeValidator,
-  acceptJsonValidator,
-  authHeaderValidator,
-  auth,
-  deleteByUrlValidator,
-  deleteArticle,
-);
+router.delete('/', headersValidator, auth, deleteByUrlValidator, deleteArticle);
 
 export default router;
